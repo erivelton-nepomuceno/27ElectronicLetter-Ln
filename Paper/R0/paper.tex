@@ -67,15 +67,17 @@ Erivelton Nepomuceno through grant 444154/2024-8.}
 \keywords{chaos | digital circuits | field programmable gate arrays | fixed-point arithmetic | logic gates | random number generation}
 % TODO: check whether EL requires keywords from a controlled list.
 
-\abstract[ABSTRACT]{Chaotic generators for lightweight hardware must be chosen before
-synthesis, yet their digital cost is reported case by case. This letter predicts the gate
-count of chaotic maps and flows from their equations and design choices. Each update is
-mapped to two-input logic gates in $n$-bit fixed point. With $M$ state products and $C$
-non-dyadic constants, $L(n)\le(5.75M+2.5C)n^2+O(n)$, so piecewise-linear systems are
-linear in $n$. A dyadic constant cuts the 64-bit tent map from 5571 to 879 gates with a
-nearly unchanged Lyapunov exponent, and FPGA lookup-table counts for eight systems stay
-within 14\% of gate counts. The law lets designers screen chaotic generators before
-synthesis.}
+\abstract[ABSTRACT]{Chaotic generators for lightweight hardware have been chosen before
+synthesis, yet their digital cost is reported case by case. This letter introduces the logic-gate
+complexity $L(n)$ of chaotic maps and flows, predicted from their equations and design choices.
+It serves to compare chaotic generators before synthesis.
+Taking two-input logic gates as the primitive, we present the key design steps: the update
+is written in $n$-bit fixed point as additions, piecewise-linear operations, products and
+constant multiplications, each operation is replaced by an adder or multiplier circuit, and
+the gates that drive an output are counted. We evaluate the technique on eight chaotic
+systems and show that the 64-bit circuits preserve the main qualitative chaotic behaviour
+of float64, with the largest Lyapunov exponent within 3.6\% and the state distribution
+within 12\%, except for the Gingerbreadman map.}
 
 \maketitle
 
