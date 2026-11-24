@@ -1,0 +1,25 @@
+# LaTeX build files
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.pag
+*.synctex.gz
+*.xdv
+paper.pdf
+WileyDesign/Optimal-Design-layout/Optimal-Design-layout.pdf
+
+# Archives (their contents are already in WileyDesign/ and ec_artifact_src/)
+*.zip
+
+# Python
+__pycache__/
+
+# Literature PDFs (publisher copyright; kept locally only)
+1-s2.0-S1434841119319855-main.pdf
+Advantages_of_the_Linz-Sprott_weak_nonlinearity_*.pdf
+FPGA_Implementation_of_Chaotic_Oscillators.pdf
+journal.pone.0299021.pdf

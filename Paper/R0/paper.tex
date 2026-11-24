@@ -1,0 +1,377 @@
+\documentclass[ASNA,twocolumn]{USG}
+% Wiley template downloaded from the Electronics Letters author guide (WileyDesign/).
+% Build: latexmk (see latexmkrc; XeLaTeX, class and .bst taken from WileyDesign/).
+% Spelling: British English (IET).
+%
+% Length (EL author guide, Letter): 2500-4200 words of main text; each figure or table
+% counts as 800 words; references are not counted; captions concise.
+% Plan: Fig. 1 + Fig. 2 + Table 1 = 2400 word-equivalents -> main text about 1500-1800 words.
+% A Letter must: present original results; state novelty; compare with recently published
+% approaches; show a clear engineering application.
+
+\usepackage{booktabs}
+\usepackage{xcolor}
+\newcommand{\todo}{\textcolor{red}{TODO}}
+
+% USG.cls draws the sample journal's logo (allergy.eps) on the title page; remove it.
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd{\@maketitle}{\includegraphics[width=56mm]{allergy.eps}}{}{}%
+  {\PackageWarning{paper}{Could not remove the sample logo}}
+\makeatother
+
+% Draws a framed placeholder until the figure file exists.
+\newcommand{\figorplaceholder}[1]{\IfFileExists{#1.pdf}{\includegraphics[width=\columnwidth]{#1}}%
+  {\fbox{\parbox[c][40mm][c]{0.95\columnwidth}{\centering\detokenize{#1} (\todo)}}}}
+
+\articletype{LETTER}
+\journal{Electronics Letters}
+\volume{0}
+\copyyear{2026}
+\startpage{1}
+\articledoi{10.1002/0000}
+\received{00}
+\revised{00}
+\accepted{00}
+% Placeholders required by USG.cls; the publisher fills them in.
+
+\makeatletter\@ifundefined{proposition}{\newtheorem{proposition}{Proposition}}{}\makeatother
+\begin{document}
+
+\title{Logic-gate complexity of digital chaotic systems}
+\titlemark{Logic-gate complexity of digital chaos}% running title, < 40 characters (EL)
+% Alternatives: "A gate-count law for fixed-point chaotic maps and flows"
+%               "How many logic gates does chaos need?"
+
+\author[1]{Erivelton Nepomuceno}[https://orcid.org/0000-0002-5841-2193]
+\author[1]{Thalita Nazar\'e}[https://orcid.org/0000-0002-4372-6608]
+\author[1]{Arthur M. Lima}[https://orcid.org/0000-0002-0542-3753]
+\author[2]{Chi-Tsun Cheng}[https://orcid.org/0000-0003-3306-6148]
+\authormark{NEPOMUCENO \textsc{et al.}}
+
+\address[1]{\orgdiv{Hamilton Institute and Department of Electronic Engineering, }%
+\orgname{Maynooth University, }\orgaddress{\state{Maynooth, }\country{Ireland}}}
+\address[2]{\orgdiv{Department of Mechanical, Manufacturing and Mechatronic Engineering, School of Engineering, }%
+\orgname{RMIT University, }\orgaddress{\state{Melbourne, }\country{Australia}}}
+% Cheng's affiliation taken from his IEEE CAS contact page: confirm with him.
+
+\corres{Erivelton Nepomuceno (\email{erivelton.nepomuceno@mu.ie})}
+
+\fundingInfo{Taighde \'Eireann -- Research Ireland supported this research through grants
+18/CRT/6049 and 21/FFP-P/10065, with additional support from Rinn AI (Research \&
+Innovation in Data Science and AI) through grant 23/RC/13506. Arthur M. Lima
+received an Electronic Engineering PhD co-funded scholarship, and the Conselho
+Nacional de Desenvolvimento Cient\'ifico e Tecnol\'ogico (CNPq) supported
+Erivelton Nepomuceno through grant 444154/2024-8.}
+
+\keywords{chaos | digital circuits | field programmable gate arrays | fixed-point arithmetic | logic gates | random number generation}
+% TODO: check whether EL requires keywords from a controlled list.
+
+\abstract[ABSTRACT]{Chaotic generators for lightweight hardware must be chosen before
+synthesis, yet their digital cost is reported case by case. This letter predicts the gate
+count of chaotic maps and flows from their equations and design choices. Each update is
+mapped to two-input logic gates in $n$-bit fixed point. With $M$ state products and $C$
+non-dyadic constants, $L(n)\le(5.75M+2.5C)n^2+O(n)$, so piecewise-linear systems are
+linear in $n$. A dyadic constant cuts the 64-bit tent map from 5571 to 879 gates with a
+nearly unchanged Lyapunov exponent, and FPGA lookup-table counts for eight systems stay
+within 14\% of gate counts. The law lets designers screen chaotic generators before
+synthesis.}
+
+\maketitle
+
+%--------------------------------------------------------------------------
+\section{Introduction}\label{sec:intro}
+Hardware resource and energy constraints limit the implementation of chaotic
+generators in lightweight and embedded devices.
+Chaotic generators are research options for Internet-of-Things (IoT) communications
+and image encryption~\cite{karagiorgos2024}, and lightweight stream
+ciphers~\cite{ding2019}, motivating comparisons of candidate systems before
+synthesis. FPGA studies usually report resources, speed and power for particular
+systems, word widths and integration methods
+\cite{mansingka2013, rezk2020, guillen2021, jauhari2023, damaj2024, babajans2025, alloun2025, tasdemir2025}, whereas others examine
+finite-precision degradation~\cite{li2005, mendez2019}. Removing multipliers or changing
+number representations reduces cost, but reported savings remain system-specific
+\cite{rezk2020, nepomuceno2019, teixeira2019}.
+
+Few equation terms or nonlinearities~\cite{sprott1994} do not necessarily imply low
+circuit cost. Comparing five systems, Indrusiak et al.\ \cite{indrusiak2005} linked
+the Linz--Sprott flow's lower FPGA cost to its multiplier-free nonlinearity.
+Can gate cost be predicted from the equations and word width before synthesis?
+
+We address this question with a gate-count law, illustrated on eight maps and flows,
+that separates state products and non-dyadic constants from linear-cost operations,
+using architecture-dependent coefficients. As an early-stage design indicator,
+it identifies costs potentially removable by changing parameters or the system.
+We compare gate counts with FPGA synthesis and estimate energy using a
+switching-activity model.
+
+%--------------------------------------------------------------------------
+\section{Gate-level implementation}\label{sec:impl}
+Each system has a single description that provides float64 reference results
+or produces a gate-level netlist of two-input AND, OR and XOR gates and inverters. State variables use
+$n$-bit two's-complement fixed-point numbers, with the number of integer bits set by
+the float64 attractor range. Additions use ripple-carry adders, and
+products use radix-4 Booth multipliers that keep only the columns needed for the exact
+floor of the product. A constant is applied as a canonical-signed-digit chain of shifts
+and additions with four guard bits, rounded once per linear combination, and is taken
+from float64 except in Fig.~\ref{fig:Ln}. Flows are
+integrated by forward Euler with a step $\mathrm{d}t = 2^{-k}$, so that multiplying by
+$\mathrm{d}t$ requires only wiring, although the step can also be included in the constants.
+Sine and
+cosine take their argument in turns, fold it to a quarter turn and evaluate an odd
+Taylor polynomial by Horner's rule, with the degree chosen for the word width.
+During netlist construction,
+operations on known constants are simplified and identical gates are shared,
+counting only gates that contribute to an output.
+Gate counts, fidelity metrics and energy estimates for 73 maps and flows
+(117 implementations, including RK4 versions of the flows) are available in the
+repository given in the Data Availability Statement; this letter reports
+representative systems. Across 200 states from each
+attractor, the netlist and the integer model used for the long runs
+gave the same output bits in every check.
+
+%--------------------------------------------------------------------------
+\section{Gate-count law}\label{sec:law}
+State products and constant multiplications account for the quadratic cost.
+A product of two $n$-bit signals uses a radix-4 Booth multiplier whose gate count
+grows as $23n^2/4$, regardless of the number of integer bits, giving $a = 5.75$.
+
+Multiplication by a constant $c$ uses a chain of ripple-carry adders, one per non-zero
+canonical-signed-digit (CSD) digit, at five gates per bit per adder. When $c$ is
+stored at the word resolution, it has $\rho_c n$ non-zero digits, where $\rho_c$ is its
+digit density. CSD has no adjacent non-zero digits, so $\rho_c \le 1/2$. Dyadic
+constants have a fixed number of digits and cost $O(n)$. Multiplication by
+$\mathrm{d}t = 2^{-k}$ requires only wiring, and added constants cost $O(n)$. The gate count is not a property of the equations alone: it also depends on design
+choices, namely how the update is written, the adder and multiplier algorithms, the
+discretisation scheme and step, and the word width. The construction is therefore stated
+as a procedure. (i) Write the map, or the Euler update of the flow with
+$\mathrm{d}t=2^{-k}$, as a sequence of additions, piecewise-linear operations, products
+and constant multiplications. (ii) Choose $n$ and the integer bits from the attractor
+range. (iii) Replace each addition by a ripple-carry adder, each product by a Booth
+multiplier, each constant by its CSD shift-and-add chain and each dyadic factor by
+wiring. (iv) Simplify the netlist and count the gates that drive an output.
+For this procedure:
+
+\begin{proposition}\label{prop:law}
+Assume ripple-carry adders, radix-4 Booth multipliers, a fixed number of integer bits and
+constants stored to the word resolution. Write the update as a straight-line program of
+additions, piecewise-linear operations, $M$ products of two state-dependent signals and
+$C$ multiplications of a signal by a non-dyadic constant $c$ (not of the form $k/2^m$).
+Then the gate count per iteration satisfies
+\begin{equation}
+  L(n) = 5.75\,M\,n^2 + 5\sum_{c=1}^{C} \rho_c\, n^2 + O(n)
+       \le \left(aM + bC\right) n^2 + O(n),
+  \label{eq:law}
+\end{equation}
+with $a = 5.75$ and $b = 2.5$, where $\rho_c \le 1/2$ is the CSD digit density of $c$.
+\end{proposition}
+\begin{proof}[Sketch]
+Each Booth product costs $23n^2/4+O(n)$ gates, each constant costs one $5n$-gate adder per
+non-zero CSD digit, of which there are $\rho_c n+O(1)$ with $\rho_c\le1/2$, and every other
+operation costs $O(n)$.
+\end{proof}
+Because $M$ and $C$ depend on how the update is written ($xy+xz$ or $x(y+z)$), we take the
+form with the fewest products; Eq.~(\ref{eq:law}) is then an upper bound on the minimal
+gate count, and its growth order, not the exact count, defines the cost class. Fits to the measured counts give
+the predicted quadratic terms, including $5.75n^2$ for the logistic map ($M = 1$, $C = 0$).
+The R\"ossler flow, with $z(x-c)$ computed as one product, has one state product and
+one constant $a\,\mathrm{d}t = 0.2\,\mathrm{d}t$ with $\rho = 1/2$, giving $8.25n^2$.
+The Lorenz flow, with $x(28-z)$ as one product and dyadic $\sigma\,\mathrm{d}t = 10/2^7$, has
+two state products and one constant $\beta\,\mathrm{d}t = 1/48$ with $\rho = 1/2$, giving $14.0n^2$
+(Table~\ref{tab:systems}).
+
+Sine, cosine and exponential functions use polynomials whose degree grows with $n$,
+adding a cubic term. This gives three classes by operation: piecewise-linear systems with $M = C = 0$ and
+linear cost (Gingerbreadman, Lozi, tent), polynomial systems with state products or
+non-dyadic constants and quadratic cost (MDCS, logistic, Chua, R\"ossler, Lorenz), and
+transcendental systems with cubic cost, such as the sine map
+($\mu=0.99$, about $0.27n^3+82n^2$, 293\,018 gates at 64 bits; see the repository). Figure~\ref{fig:Ln} shows the systems of
+Table~\ref{tab:systems}. The polynomial class includes Chua's circuit, whose
+piecewise-linear nonlinearity uses non-dyadic constants.
+% Class counts from logical-chaos.md (71 systems with IDs) plus the two degenerate maps.
+% Constants in the code come from float64 (53 significant bits): beyond n ~ 54 their CSD
+% digits saturate at about 27 and the constant term becomes linear (~135n per constant);
+% this is why Chua's 16-64 fit gives only 1.44 n^2. Fig. 1 uses exact constants.
+
+\begin{figure}[t]
+\centering
+\figorplaceholder{fig1_Ln}
+\caption{Gates per iteration against word width for systems in the piecewise-linear
+and polynomial classes, with constants stored to the word resolution. Dashed lines
+show slopes 1 and 2.}
+\label{fig:Ln}
+\end{figure}
+% Fig. 1 from analysis/fig1_data.py + analysis/figures.py (ripple + Booth, exact constants).
+
+%--------------------------------------------------------------------------
+\section{Design rule}\label{sec:rule}
+Avoiding state products and choosing dyadic constants gives low-cost circuits.
+Piecewise-linear operations such as $|x|$, $\min$ and saturation keep linear cost,
+so Gingerbreadman, Lozi and tent maps need fewer than 1000 gates at 64 bits.
+For the tent map, float64 $\mu=1.99$ saturates at 16 CSD digits from about 56 bits,
+costing $84n+195$ gates. Choosing $\mu=2-2^{-7}$ needs two digits and
+$14n-17$ gates, reducing the 64-bit count from 5571 to 879 by a factor of 6.3
+while the Lyapunov exponent $\lambda=\ln\mu$ changes from 0.6881 to 0.6892.
+For the logistic map, $r=63/16$ removes quadratic constant-multiplication cost,
+but the state product retains $5.75n^2$.
+
+We call the potential reduction towards a comparable linear-cost design the
+headroom. Equation~(\ref{eq:law}) identifies its product and non-dyadic-constant
+contributions, with the tent example removing 84\% of the 64-bit gates. This is an
+architecture-relative screening indicator, not an absolute silicon-cost prediction
+or a universally attainable floor. Removing an essential product changes the system,
+and dyadic parameter substitutions must preserve the required dynamics, while
+transcendental functions retain their cubic cost unless replaced.
+
+Replacing $x^2$ with $|x|$ also motivates comparing logistic with tent and H\'enon
+with Lozi. At 64 bits, tent needs 879 gates versus 23\,705 for logistic, and
+Lozi ($a=7/4$, $b=1/2$) needs 754 versus 40\,846 for H\'enon ($M=1$, $C=2$).
+Their respective Lyapunov exponents are 0.69 versus 0.53 and 0.51 versus 0.42,
+so lower cost does not imply a lower exponent in these examples.
+
+%--------------------------------------------------------------------------
+\section{Validation and comparison}\label{sec:validation}
+Eight 64-bit netlists were synthesised with Vivado 2025.2 for a Zynq UltraScale+
+xczu7ev, using out-of-context synthesis, place and route, and one gate per lookup
+table (LUT). Mapping one gate per LUT (hierarchy kept, no LUT combining) isolates the
+netlist cost, so this comparison checks the netlists rather than predicting
+LUT counts; default synthesis, which packs gates into six-input LUTs and maps
+products to carry chains and DSP blocks, gives % TODO: HDL results
+\todo. LUT counts differ from gate counts by $-8\%$ to $+14\%$, with
+a log--log slope of 0.99 ($R^2=0.999$) over two orders of magnitude
+(Table~\ref{tab:systems}), preserving the separation between classes.
+
+Four-bit carry-lookahead adders give $(a,b)=(9.125,4.75)$, array multipliers give
+$(8.5,2.5)$, and combining both gives $(15.25,4.75)$. Equation~(\ref{eq:law}) predicts
+the Lorenz, R\"ossler and logistic quadratic coefficients in each architecture.
+Slopes for the piecewise-linear class remain 1.00--1.02 over 64--128 bits, with bitwise agreement
+between every netlist and its reference.
+
+The switching-activity model assigns 40\,fJ per LUT toggle and 10\,fJ per flip-flop
+per cycle. For 114 of the 117 64-bit circuits in the repository,
+estimated energy per output bit scales with gates per state bit ($L(64)$ over the number
+of state bits), with slope 0.91 and
+$R^2=0.94$ (Fig.~\ref{fig:energy}). Estimates are 0.06\,pJ for Gingerbreadman
+and 2.4\,pJ for Lorenz. The piecewise-linear class has the lowest estimated
+energy per output bit under this model.
+
+Published FPGA comparisons require care because devices, widths and mappings differ.
+Chua used 5544 LUTs versus 2268 for Lorenz in~\cite{indrusiak2005}, despite its
+piecewise-linear nonlinearity, and Eq.~(\ref{eq:law}) identifies costs from its three
+non-dyadic constants. Multiplierless Chua and modified Lorenz and R\"ossler generators with
+power-of-two constants need 178--224 LUTs at 20 fractional bits~\cite{rezk2020},
+consistent with linear cost.
+
+LUT counts omit multiplication mapped to digital signal processing (DSP) blocks.
+The 32-bit Lorenz and R\"ossler circuits in~\cite{jauhari2023} use 378 and 500 LUTs
+plus 8 and 4 DSP blocks, respectively. Reported counts of 2748 LUTs for an 8-bit
+Euler core and 5 for RK4~\cite{damaj2024} likewise resist comparison by integration
+order alone. Gate counts provide a common basis before synthesis.
+
+\begin{table}[t]
+\caption{Representative systems showing products between state variables $M$, non-dyadic constants
+$C$, fitted gate count per iteration, gates at 64 bits and FPGA LUTs.\label{tab:systems}}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lcclrr@{}}
+\toprule
+System & $M$ & $C$ & $L(n)$ & $L(64)$ & LUTs\\
+\midrule
+Gingerbreadman      & 0 & 0 & $7n + 2$                & 450     & 450\\
+Lozi~\cite{lozi1978} & 0 & 0 & $12n - 14$              & 754     & 758\\
+Tent$^{\rm a}$      & 0 & 0 & $14n - 17$              & 879     & 915\\
+MDCS$^{\rm b}$      & 1 & 0 & $1.50n^2 + 4.7n - 26$   & 6432    & 6838\\
+Logistic            & 1 & 0 & $5.75n^2 + 2.5n - 7$    & 23\,705 & 23\,994\\
+Chua$^{\rm c}$      & 0 & 3 & ---$^{\rm c}$ & 22\,647 & 25\,724\\
+R\"ossler~\cite{rossler1976} & 1 & 1 & $8.22n^2 - 24n - 237$   & 31\,925 & 29\,704\\
+Lorenz~\cite{lorenz1963} & 2 & 1 & $14.0n^2 - 51n - 281$   & 53\,799 & 49\,450\\
+\bottomrule
+\end{tabular}
+\par\smallskip
+\parbox{\columnwidth}{\scriptsize LUT counts use 64-bit netlists, one gate per LUT, Vivado 2025.2,
+Zynq UltraScale+ xczu7ev (ZCU104).
+$^{\rm a}$ $\mu = 2 - 2^{-7}$.
+$^{\rm b}$ Minimal digital chaotic system~\cite{nepomuceno2019} with a dedicated digit-complement multiplier.
+$^{\rm c}$ Float64 constants, whose CSD digits saturate within 16--64 bits, so no stable
+quadratic fit exists; the cost is close to linear beyond 64 bits.}
+% Parameters removed from the notes (all in the text or in logical-chaos.md): Lozi a = 7/4,
+% b = 1/2; logistic r = 63/16; Chua alpha = 15.6, m0 = -8/7, m1 = -5/7; Rossler a = b = 0.2,
+% c = 5.7 (c and b are free); Lorenz sigma = 10, rho = 28, beta = 8/3.
+\end{table}
+% M and C read from the code in ec_artifact_src/ec_artifact/compute/zoo.py: dt is folded into
+% the constants; only constants that multiply a signal count (additive ones are free);
+% integers such as 10, 28 have short CSD chains (linear cost).
+% Measured with BitB (analysis/const_cost.py, analysis/const_exact.py), n = 16..256:
+%   one product: exactly 5.75 n^2 for any number of integer bits I (a = 23/4);
+%   one exact constant: 5*rho*n^2, rho = CSD digit density <= 1/2 -> b <= 2.5
+%     (1/5, 8/3: rho = 1/2, coef 2.500; 15.6*(2/7)*2^-7: coef 1.69);
+%   float64 constant: CSD digits saturate at up to about 27, so cost up to ~ 5*27*n = 135n
+%     beyond n ~ 54; tent mu = 1.99 saturates at 16 digits from n = 56: exactly 84n + 195.
+% Law check, L ~ (5.75 M + 2.5 C) n^2 (16-64 fits):
+%   Logistic 5.75 (fit 5.75) OK; Lorenz 14.0 (fit 14.0) OK; Rossler 8.25 (fit 8.25) OK;
+%   Chua 7.5 vs fit 1.44: three float64 constants with rho < 1/2 that saturate within
+%     16-64 bits (I = 4, so F is large) -> constant term is not n^2 over the fit window;
+%   MDCS 5.75 vs fit 1.50: special multiplier, outside the architecture.
+% LUTs from the authors' Vivado runs (2026-11-05).
+% pJ/bit column removed (2026-11-05); energy only in Sec. 5 and Fig. 2.
+
+\begin{figure}[t]
+\centering
+\figorplaceholder{fig2_energy}
+\caption{Estimated energy per output bit against gates per state bit for 114 of the
+117 64-bit circuits in the repository. Markers show the class, the line shows the
+least-squares fit, and labelled points refer to the systems in Table~\ref{tab:systems}.}
+\label{fig:energy}
+\end{figure}
+
+%--------------------------------------------------------------------------
+\section{Fidelity}\label{sec:fidelity}
+A low-cost circuit is useful only if it preserves the chaotic behaviour of interest.
+For each system of Table~\ref{tab:systems}, we compared the 64-bit circuit with float64
+over $10^5$ iterations for maps and 500 time units for flows, using the same
+integration method and step, and compared the largest Lyapunov exponent and the
+distribution of $x$ (Wasserstein distance) with the difference between two float64 runs
+started from nearby initial conditions.
+The relative error of the exponent is $1.1\times10^{-8}$ for the tent map with
+$\mu = 2 - 2^{-7}$, $6\times10^{-5}$ for MDCS, 0.2\% for Lozi, 0.9\% for the logistic map,
+1.6\% for Chua and Lorenz, and 3.6\% for R\"ossler, whose exponent and distribution both
+lie within the float64 noise floor. The distribution error stays below 0.5\% for
+Lozi, tent, MDCS, logistic and R\"ossler, but reaches 9\% for Lorenz and 12\% for Chua.
+The Gingerbreadman map is the exception, with a 28\% exponent error and a 3\% distribution
+error, so its low cost comes with reduced fidelity at 64 bits.
+Long-term periodicity of the digital maps is outside the scope of this study \cite{li2005}.
+
+%--------------------------------------------------------------------------
+\section{Conclusion}\label{sec:conclusion}
+For this architecture, each state product contributes $5.75n^2$ gates and each
+non-dyadic constant at most $2.5n^2$, whereas dyadic constants and piecewise-linear operations
+retain linear cost. Other adders and multipliers change the coefficients but preserve
+this form, and LUT counts for eight synthesised systems agree within 14\% of gate counts.
+Piecewise-linear maps need a few hundred gates
+and estimated 0.06--0.14\,pJ per output bit.
+The law supports screening before synthesis by identifying architecture-relative
+headroom, whose realisation depends on preserving the required dynamics.
+
+\bmsubsection*{Author Contributions}
+\textbf{Erivelton Nepomuceno:} Conceptualization, Methodology, Software, Investigation,
+Writing -- original draft, Resources, Funding acquisition.
+\textbf{Thalita Nazar\'e:} Methodology, Software, Investigation, Writing -- original draft.
+\textbf{Arthur M. Lima:} Methodology, Software, Investigation, Writing -- original draft.
+\textbf{Chi-Tsun Cheng:} Conceptualization, Writing -- review \& editing.
+
+%\bmsubsection*{Acknowledgments}
+%\todo.
+
+\bmsubsection*{Conflicts of Interest}
+The authors declare no conflicts of interest.
+
+\bmsubsection*{Data Availability Statement}
+The code and data supporting this study, including gate counts, fidelity metrics and
+energy estimates for all 73 systems, are openly available in Zenodo at
+https://doi.org/\todo.
+% TODO: check which statements EL requires (data availability, funding, ORCID).
+
+\bibliography{refs}
+
+\end{document}

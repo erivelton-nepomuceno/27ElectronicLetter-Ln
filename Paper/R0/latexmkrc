@@ -1,0 +1,5 @@
+# Build with XeLaTeX (recommended by the Wiley template) and find USG.cls,
+# its .sty files and the .bst in the template folder.
+$pdf_mode = 5;
+ensure_path('TEXINPUTS', './WileyDesign/Optimal-Design-layout//');
+ensure_path('BSTINPUTS', './WileyDesign/Optimal-Design-layout//');

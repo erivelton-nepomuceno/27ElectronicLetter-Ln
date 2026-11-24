@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Efficient Chaos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:wght@500;600&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f8f9;--surface:#ffffff;--ink:#17222c;--muted:#5b6872;--rule:#dde3e7;--accent:#16626b;--accent-soft:#e3f0f1;
+ --cL:#2f7d4a;--cP:#2f5f9e;--cD:#8a5a14;--cT:#9b3b5a;--deg:#9aa3a9;color-scheme:light;
+ box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11171c;--surface:#182128;--ink:#e6ecef;--muted:#9aa7b0;--rule:#2a353d;--accent:#5fb7c0;--accent-soft:#1d3135;
+ --cL:#7ccf96;--cP:#86aee6;--cD:#e0b26a;--cT:#e98fae;--deg:#6d777e;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#11171c;--surface:#182128;--ink:#e6ecef;--muted:#9aa7b0;--rule:#2a353d;--accent:#5fb7c0;--accent-soft:#1d3135;--cL:#7ccf96;--cP:#86aee6;--cD:#e0b26a;--cT:#e98fae;--deg:#6d777e;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:1240px;margin:0 auto;padding:28px 20px 48px}
+h1{font:600 clamp(26px,3.6vw,38px)/1.15 Spectral,Georgia,serif;margin:0 0 8px;max-width:22ch}
+.lead{color:var(--muted);max-width:70ch;margin:0 0 22px}
+.controls{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin-bottom:14px}
+.controls input[type=search]{font:inherit;padding:8px 12px;border:1px solid var(--rule);border-radius:8px;background:var(--surface);color:var(--ink);min-width:220px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font:500 13px "Public Sans",sans-serif;border:1px solid var(--rule);background:var(--surface);color:var(--ink);padding:5px 11px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.chip:focus-visible,th button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.count{color:var(--muted);font-size:13px;margin-left:auto}
+.wrap{overflow:auto;max-height:calc(100vh - 120px);min-height:320px;border:1px solid var(--rule);border-radius:10px;background:var(--surface)}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:1180px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}
+th:nth-child(-n+6),td:nth-child(-n+6){text-align:left}
+th:nth-child(1),td:nth-child(1){position:sticky;left:0;z-index:2;background:var(--surface);width:44px}
+th:nth-child(2),td:nth-child(2){position:sticky;left:44px;z-index:2;background:var(--surface);box-shadow:1px 0 0 var(--rule);white-space:normal;min-width:190px;max-width:240px}
+thead th:nth-child(1),thead th:nth-child(2){z-index:3}
+td.sch{font-size:13px}td.sch.RK4{color:var(--cT)}td.sch.Euler{color:var(--cP)}td.sch.map{color:var(--muted)}
+td.law{white-space:normal;min-width:150px;max-width:190px}
+thead th{position:sticky;top:0;background:var(--surface);z-index:1;border-bottom:2px solid var(--rule)}
+th button{all:unset;cursor:pointer;font-weight:600;font-size:13px;color:var(--muted);display:inline-flex;gap:4px;align-items:center}
+th[aria-sort] button{color:var(--ink)}
+th .arr{width:10px;display:inline-block;color:var(--accent)}
+tbody tr:hover td{background:var(--accent-soft)}
+tr.mdcs td{background:var(--accent-soft)}
+tr.mdcs td:nth-child(2){font-weight:600}
+tr.deg td{color:var(--deg)}
+.cls{display:inline-block;min-width:22px;text-align:center;font-weight:600;font-size:12px;padding:1px 6px;border-radius:5px;border:1px solid currentColor}
+.cls.L{color:var(--cL)}.cls.P{color:var(--cP)}.cls.D{color:var(--cD)}.cls.T{color:var(--cT)}.cls.x{color:var(--deg)}
+.law{color:var(--muted);font-size:13px}
+.m{color:var(--muted);font-size:11px;margin-left:2px}
+td.pj{font-weight:600}
+.notes{color:var(--muted);font-size:13px;max-width:90ch;margin-top:18px}
+.topscroll{overflow-x:auto;overflow-y:hidden;margin-bottom:4px}
+.topscroll div{height:1px}
+.notes p{margin:4px 0}
+
+button.nm{all:unset;cursor:pointer;color:inherit;text-decoration:underline;text-decoration-color:var(--rule);text-underline-offset:3px}
+button.nm:hover{text-decoration-color:var(--accent);color:var(--accent)}
+button.nm:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+dialog#prof{border:1px solid var(--rule);border-radius:12px;background:var(--surface);color:var(--ink);padding:0;max-width:min(680px,94vw);width:100%;box-shadow:0 18px 50px rgba(0,0,0,.25)}
+dialog#prof::backdrop{background:rgba(10,20,28,.45)}
+#prof .hd{display:flex;justify-content:space-between;align-items:start;gap:12px;padding:18px 20px 8px}
+#prof h2{font:600 22px/1.2 Spectral,Georgia,serif;margin:0}
+#prof .x{all:unset;cursor:pointer;font-size:22px;line-height:1;padding:2px 6px;color:var(--muted)}
+#prof .bd{padding:4px 20px 18px;max-height:72vh;overflow:auto}
+#prof dl{display:grid;grid-template-columns:minmax(120px,30%) 1fr;gap:6px 14px;margin:8px 0 14px}
+#prof dt{color:var(--muted);font-size:13px}#prof dd{margin:0}
+#prof h3{font:600 14px "Public Sans",sans-serif;margin:14px 0 6px;color:var(--accent)}
+#prof .eq{font-size:16px;padding:8px 10px;background:var(--accent-soft);border-radius:8px}
+#prof .note{color:var(--muted);font-size:13px}
+#prof pre{white-space:pre-wrap;font-size:12px;background:var(--bg);border:1px solid var(--rule);border-radius:8px;padding:8px;margin:6px 0}
+#prof .plots{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 4px}
+#prof .plots figure{margin:0;border:1px solid var(--rule);border-radius:8px;background:var(--bg)}
+#prof .plots svg{width:100%;height:auto;display:block}
+#prof .plots .pt{fill:var(--accent)}#prof .plots .ax{stroke:var(--muted);stroke-width:1}
+#prof .plots text{fill:var(--muted);font:11px "Public Sans",sans-serif}#prof .plots .tt{fill:var(--ink);font-weight:600;text-anchor:middle}
+#prof .plots .lb{text-anchor:middle}#prof .plots .cap{grid-column:1/-1;margin:0}
+@media (max-width:520px){#prof .plots{grid-template-columns:1fr}}
+#prof .cp{font:500 13px "Public Sans",sans-serif;border:1px solid var(--rule);background:var(--surface);color:var(--ink);border-radius:8px;padding:5px 10px;cursor:pointer}
+</style></head><body><main>
+<h1>Efficient Chaos</h1>
+<p class="lead">Core idea: build every chaotic system from nothing but two-input AND, OR, XOR and NOT gates in n-bit fixed point, then rank the implementations by how little they cost, gates per iteration L(n) and energy per output bit, while checking that the digital version is still chaotic and faithful to the original. The simplest digital chaos is the one at the top of that ranking. Flows appear twice: Euler at the original step and RK4 at a 4× larger step. pJ/bit is the estimated typical energy per output bit at 32 and 64 bits. Click any column heading to sort, and any system name to open its profile.</p>
+<div class="controls">
+ <input type="search" id="q" placeholder="Search systems" aria-label="Search systems">
+ <div class="chips" role="group" aria-label="Filter by class" id="clsF"></div>
+ <div class="chips" role="group" aria-label="Filter by type" id="typeF"></div>
+ <div class="chips" role="group" aria-label="Filter by scheme" id="schF"></div>
+ <span class="count" id="count"></span>
+</div>
+<div class="topscroll" id="topscroll" aria-hidden="true"><div id="topscrollInner"></div></div>
+<div class="wrap" id="wrap"><table id="t"><thead><tr></tr></thead><tbody></tbody></table></div>
+<div class="notes">
+<p>Class: L linear in n (no state products, dyadic constants); P polynomial, about n²; D division or square root, about n²; T sin, cos or exp, about n³.</p>
+<p>⚠ degenerate in binary: the state collapses and the circuit stops switching. ◊ chaotic in floating point, but a 2⁻¹² nudge did not saturate within 15,000 steps of the 32-bit circuit. * at 16 bits too few fractional bits remain to reproduce the attractor. ‡ constants limited to 53-bit precision, so cost is understated. ᵉ extrapolated from the fit over 16 to 64 bits (all RK4 rows at 128 and 256 bits). ≈ approximate fit.</p>
+<p>Energy model: zero-delay switching activity from simulation, 40 fJ per lookup-table output toggle and 10 fJ per flip-flop per cycle; glitches and static power excluded. These are model estimates, not measurements.</p>
+</div>
+</main>
+<dialog id="prof" aria-labelledby="profT"><div class="hd"><h2 id="profT"></h2><button class="x" type="button" aria-label="Close">×</button></div><div class="bd" id="profB"></div></dialog>
+<script>
+const ROWS=__ROWS__;
+const COLS=[["rank","#","n"],["name","System","s"],["type","Type","s"],["cls","Class","s"],["scheme","Scheme","s"],["law","L(n)","s"],
+ ["L64","L(64)","n"],["L16","L(16)","n"],["L32","L(32)","n"],["L128","L(128)","n"],["L256","L(256)","n"],["pj32","pJ/bit, 32-bit","n"],["pj64","pJ/bit, 64-bit","n"],["m1","1-step error / time (64-bit vs float64)","n"],["lamErr","λ error (rel.)","n"],["denErr","Density error (rel. W)","n"]];
+let sortKey="L64",dir=1,q="",clsOn=new Set(["L","P","D","T","—"]),typeOn=new Set(["map","flow"]),schOn=new Set(["map","Euler","RK4"]);
+const schOf=r=>r.scheme.startsWith("RK4")?"RK4":r.scheme.startsWith("Euler")?"Euler":"map";
+const thead=document.querySelector("thead tr"),tbody=document.querySelector("tbody");
+COLS.forEach(([k,label])=>{const th=document.createElement("th");th.dataset.k=k;
+ th.innerHTML=`<button type="button">${label}<span class="arr"></span></button>`;
+ th.querySelector("button").onmousedown=e=>e.preventDefault();th.querySelector("button").onclick=()=>{if(sortKey===k)dir=-dir;else{sortKey=k;dir=1}render()};thead.appendChild(th)});
+function chips(el,vals,set,lab){vals.forEach(v=>{const b=document.createElement("button");b.className="chip";b.type="button";
+ b.textContent=lab(v);b.dataset.v=v;b.setAttribute("aria-pressed","true");
+ b.onclick=()=>{const all=vals.every(x=>set.has(x));
+  if(all){set.clear();set.add(v)}            // first click: show only this one
+  else if(set.has(v)){set.delete(v);if(!set.size)vals.forEach(x=>set.add(x))}  // last one off: back to all
+  else set.add(v);
+  el.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",set.has(c.dataset.v)));render()};
+ el.appendChild(b)})}
+chips(document.getElementById("clsF"),["L","P","D","T"],clsOn,v=>({L:"Linear",P:"Polynomial",D:"Div/sqrt",T:"Transcendental"})[v]);
+chips(document.getElementById("typeF"),["map","flow"],typeOn,v=>v==="map"?"Maps":"Flows");
+chips(document.getElementById("schF"),["map","Euler","RK4"],schOn,v=>v==="map"?"Map iteration":v);
+document.getElementById("q").oninput=e=>{q=e.target.value.toLowerCase();render()};
+const val=(r,k)=>{const x=r[k];if(x&&typeof x==="object")return x.v;return x};
+const shortLaw=t=>{const m=t.match(/^(≈ )?([^ ]+n³) ([+−] [^ ]+n²)/);return m?(m[1]||"")+m[2]+" "+m[3]+" + …":t};
+const fmt=c=>{if(!c||c.v===null||c.v===undefined)return c&&c.t?c.t:"—";const n=c.v;const s=(n!==0&&Math.abs(n)<0.001)?n.toExponential(2).replace("e-","×10⁻").replace(/⁻(\d+)/,(m,d)=>"⁻"+[...d].map(x=>"⁰¹²³⁴⁵⁶⁷⁸⁹"[x]).join("")):(n%1?n.toFixed(3):n.toLocaleString("en-US"));return s+(c.m?`<span class="m">${c.m}</span>`:"")};
+function render(){
+ const allCls=["L","P","D","T"].every(x=>clsOn.has(x));
+ const rows=ROWS.filter(r=>(r.cls==="—"?allCls:clsOn.has(r.cls))&&typeOn.has(r.type)&&schOn.has(schOf(r))&&r.name.toLowerCase().includes(q));
+ const col=COLS.find(c=>c[0]===sortKey);
+ rows.sort((a,b)=>{let x=val(a,sortKey),y=val(b,sortKey);
+  if(col[2]==="n"){const xn=x==null,yn=y==null;if(xn||yn)return xn===yn?a.rank-b.rank:(xn?1:-1);return (x-y)*dir||a.rank-b.rank}
+  return String(x).localeCompare(String(y))*dir||a.rank-b.rank});
+ thead.querySelectorAll("th").forEach(th=>{const on=th.dataset.k===sortKey;th.toggleAttribute("aria-sort",on);
+  if(on)th.setAttribute("aria-sort",dir>0?"ascending":"descending");th.querySelector(".arr").textContent=on?(dir>0?"↑":"↓"):""});
+ tbody.innerHTML=rows.map(r=>{const deg=r.flags.includes("⚠");const md=r.name.includes("MDCS");
+  return `<tr class="${deg?"deg ":""}${md?"mdcs":""}"><td>${r.rank}</td><td><button type="button" class="nm" data-i="${ROWS.indexOf(r)}">${r.name}</button>${r.flags?` <span class="m">${r.flags}</span>`:""}</td><td>${r.type}</td>
+  <td><span class="cls ${r.cls==="—"?"x":r.cls}">${r.cls}</span></td><td class="sch ${schOf(r)}">${r.scheme}</td><td class="law">${shortLaw(r.law)}</td>
+  ${["L64","L16","L32","L128","L256"].map(k=>`<td>${fmt(r[k])}</td>`).join("")}<td class="pj">${fmt(r.pj32)}</td><td class="pj">${fmt(r.pj64)}</td><td>${fmt(r.m1)}</td><td>${fmt(r.lamErr)}</td><td>${fmt(r.denErr)}</td></tr>`}).join("");
+ document.getElementById("count").textContent=`${rows.length} of ${ROWS.length} rows`;
+}
+const PROFILES=__PROFILES__;
+const dlg=document.getElementById("prof");
+function openProfile(r){
+ const P=r.pid&&PROFILES[r.pid];
+ document.getElementById("profT").textContent=P?P.title:r.name;
+ const base=`<dt>Type</dt><dd>${r.type}</dd><dt>Class</dt><dd>${({L:"Linear",P:"Polynomial",D:"Division / square root",T:"Transcendental","—":"Degenerate"})[r.cls]||r.cls}</dd><dt>Scheme</dt><dd>${r.scheme}</dd><dt>L(n)</dt><dd>${r.law}</dd><dt>Gates at 64 bits</dt><dd>${fmt(r.L64)}</dd><dt>pJ/bit (32 / 64-bit)</dt><dd>${fmt(r.pj32)} / ${fmt(r.pj64)}</dd>`;
+ let h="";
+ if(P){
+  h+=`<div class="eq">${P.eq}</div>${P.plots?`<div class="plots">${P.plots}</div>`:""}<dl><dt>Parameters</dt><dd>${P.params}</dd><dt>Initial condition</dt><dd>${P.ic}</dd>${base}<dt>Lyapunov exponent</dt><dd>${P.lam}</dd><dt>Implementation</dt><dd>${P.impl}</dd></dl>`;
+  h+=`<h3>64-bit gate level vs float64</h3><dl>${P.metrics.map(m=>`<dt>${m[0]}</dt><dd>${m[1]}</dd>`).join("")}</dl><p class="note">${P.note}</p>`;
+  h+=`<h3>Original reference</h3><p>${P.ref} <a href="https://doi.org/${P.doi}" target="_blank" rel="noopener">doi:${P.doi}</a></p><pre id="bib">${P.bib}</pre><button class="cp" type="button" id="cpb">Copy BibTeX</button>`;
+ } else {
+  h+=`<dl>${base}</dl><p class="note">Full profile (equations, parameters, reference and 64-bit comparison) coming in the next phase.</p>`;
+ }
+ document.getElementById("profB").innerHTML=h;
+ const cb=document.getElementById("cpb");
+ if(cb)cb.onclick=async()=>{const t=document.getElementById("bib").textContent;
+   try{await navigator.clipboard.writeText(t);cb.textContent="Copied"}catch(e){const rg=document.createRange();rg.selectNodeContents(document.getElementById("bib"));const sl=getSelection();sl.removeAllRanges();sl.addRange(rg);cb.textContent="Selected — press Ctrl/Cmd+C"}};
+ dlg.showModal();
+}
+tbody.addEventListener("click",e=>{const b=e.target.closest("button.nm");if(b)openProfile(ROWS[+b.dataset.i])});
+dlg.querySelector(".x").onclick=()=>dlg.close();
+dlg.addEventListener("click",e=>{if(e.target===dlg)dlg.close()});
+
+render();
+(function(){const top=document.getElementById("topscroll"),inner=document.getElementById("topscrollInner"),wrap=document.getElementById("wrap"),tbl=document.getElementById("t");
+ let lock=false;
+ function size(){inner.style.width=tbl.scrollWidth+"px";top.style.width=wrap.clientWidth+"px";top.style.display=tbl.scrollWidth>wrap.clientWidth?"block":"none"}
+ top.addEventListener("scroll",()=>{if(lock){lock=false;return}lock=true;wrap.scrollLeft=top.scrollLeft});
+ wrap.addEventListener("scroll",()=>{if(lock){lock=false;return}lock=true;top.scrollLeft=wrap.scrollLeft});
+ window.addEventListener("resize",size);new ResizeObserver(size).observe(tbl);size();})();
+</script></body></html>
